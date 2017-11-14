@@ -31,12 +31,40 @@ public class EarthquakeActivity extends AppCompatActivity {
 
     public static final String LOG_TAG = EarthquakeActivity.class.getName();
     private static final String USGS_REQUEST_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventtype=earthquake&orderby=time&minmag=6&limit=10";
+    private EarthquakeAdapter mAdapter;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.earthquake_activity);
+
+        // Find a reference to the {@link ListView} in the layout
+        ListView earthquakeListView = findViewById(R.id.list);
+
+        // Create a new {@link ArrayAdapter} of earthquakes
+        mAdapter = new EarthquakeAdapter(this, new ArrayList<Earthquake>());
+
+        // Set the adapter on the {@link ListView}
+        // so the list can be populated in the user interface
+        earthquakeListView.setAdapter(mAdapter);
+
+        earthquakeListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                // Find the current earthquake that was clicked on
+                Earthquake currentEarthquake = mAdapter.getItem(position);
+
+                // Convert the String URL into a URI object (to pass into the Intent constructor)
+                Uri earthquakeUri = Uri.parse(currentEarthquake.getUrl());
+
+                // Create a new intent to view the earthquake URI
+                Intent websiteIntent = new Intent(Intent.ACTION_VIEW, earthquakeUri);
+
+                // Send the intent to launch a new activity
+                startActivity(websiteIntent);
+            }
+        });
 
         new EarthquakeAsyncTask().execute(USGS_REQUEST_URL);
     }
@@ -49,44 +77,17 @@ public class EarthquakeActivity extends AppCompatActivity {
                 return null;
             }
 
-            ArrayList<Earthquake> earthquakes = new ArrayList<>();
-
-            for (int i = 0; i < strings.length; i++) {
-                earthquakes.add(QueryUtils.extractEarthquake())
-            }
-
-            ArrayList<Earthquake> earthquakes = QueryUtils.extractEarthquakes();
-            return earthquakes;
+            List<Earthquake> result = QueryUtils.fetchEarthquakeData(strings[0]);
+            return result;
         }
 
         @Override
         protected void onPostExecute(List<Earthquake> earthquakes) {
-            // Find a reference to the {@link ListView} in the layout
-            ListView earthquakeListView = findViewById(R.id.list);
+            mAdapter.clear();
 
-            // Create a new {@link ArrayAdapter} of earthquakes
-            final EarthquakeAdapter adapter = new EarthquakeAdapter(this, earthquakes);
-
-            // Set the adapter on the {@link ListView}
-            // so the list can be populated in the user interface
-            earthquakeListView.setAdapter(adapter);
-
-            earthquakeListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                    // Find the current earthquake that was clicked on
-                    Earthquake currentEarthquake = adapter.getItem(position);
-
-                    // Convert the String URL into a URI object (to pass into the Intent constructor)
-                    Uri earthquakeUri = Uri.parse(currentEarthquake.getUrl());
-
-                    // Create a new intent to view the earthquake URI
-                    Intent websiteIntent = new Intent(Intent.ACTION_VIEW, earthquakeUri);
-
-                    // Send the intent to launch a new activity
-                    startActivity(websiteIntent);
-                }
-            });
+            if (earthquakes != null && !earthquakes.isEmpty()) {
+                mAdapter.addAll(earthquakes);
+            }
         }
     }
 }
